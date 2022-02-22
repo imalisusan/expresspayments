@@ -1,24 +1,63 @@
 const express = require('express');
-const serveIndex = require('serve-index');
+const bodyParser = require('body-parser');
+const path = require('path');
+const stripe = require('stripe')('sk_test_51KVto9BgzMi55eGWL4QoWyetxIstwEu4hWCa6EsKq3s13fRnvd1cBEWNqUTSGVnGCfhNhKMr3qb78aGTH7ghrWor00GX9874fF'); // Add your Secret Key Here
 
 const app = express();
 
-app.use((req, res, next) => {
-  console.log('Time: ', Date.now());
-  next();
-});
+// This will make our form data much more useful
+app.use(bodyParser.urlencoded({ extended: true }));
 
-app.use('/request-type', (req, res, next) => {
-  console.log('Request type: ', req.method);
-  next();
-});
+// This will set express to render our views folder, then to render the files as normal html
+app.set('view engine', 'ejs');
+app.engine('html', require('ejs').renderFile);
 
-//include the express.static and serveIndex middlewares and tell them the path to access from and the name of the directory
-app.use('/public', express.static('public'));
-app.use('/public', serveIndex('public'));
+app.use(express.static(path.join(__dirname, './views')));
 
-app.get('/', (req, res) => {
-  res.send('Successful response.');
-});
 
-app.listen(3000, () => console.log('Example app is listening on port 3000.'));
+app.post("/charge", (req, res) => {
+    try {
+      stripe.customers
+        .create({
+          name: req.body.name,
+          email: req.body.email,
+          source: req.body.stripeToken
+        })
+        .then(customer =>
+          stripe.charges.create({
+            amount: req.body.amount * 100,
+            currency: "usd",
+            customer: customer.id
+          })
+        )
+        .then(() => res.render("completed.html"))
+        .catch(err => console.log(err));
+    } catch (err) {
+      res.send(err);
+    }
+  });
+  
+  app.post("/charge", (req, res) => {
+      try {
+        stripe.customers
+          .create({
+            name: req.body.name,
+            email: req.body.email,
+            source: req.body.stripeToken
+          })
+          .then(customer =>
+            stripe.charges.create({
+              amount: req.body.amount * 100,
+              currency: "usd",
+              customer: customer.id
+            })
+          )
+          .then(() => res.render("completed.html"))
+          .catch(err => console.log(err));
+      } catch (err) {
+        res.send(err);
+      }
+    });
+
+const port = process.env.PORT || 3000;
+app.listen(port, () => console.log('Server is running...'));
